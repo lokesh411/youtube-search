@@ -1,0 +1,3 @@
+Start mysql with tcp protocol
+mysql --protocol=TCP -u root -p
+'CREATE TABLE `videos` (\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT,\n  `created_at` datetime(3) DEFAULT NULL,\n  `updated_at` datetime(3) DEFAULT NULL,\n  `deleted_at` datetime(3) DEFAULT NULL,\n  `title` varchar(191) DEFAULT NULL,\n  `description` longtext,\n  `published_time` datetime(3) DEFAULT NULL,\n  `thumbnails` json DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `idx_videos_deleted_at` (`deleted_at`),\n  KEY `idx_videos_published_time` (`published_time`),\n  FULLTEXT KEY `idx_videos_title` (`title`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci'
