@@ -10,6 +10,7 @@ import (
 
 var LIMIT = 10
 
+// method to query mysql and fetch videos
 func FetchVideos(publishedDate string) (*[]models.VideoPayload, error) {
 	var videos []models.VideoPayload
 	var result *gorm.DB
@@ -29,6 +30,7 @@ func FetchVideos(publishedDate string) (*[]models.VideoPayload, error) {
 	return &videos, nil
 }
 
+// method to search videos - Full text search
 func SearchVideos(term string) (*[]models.VideoPayload, error) {
 	var videos []models.VideoPayload
 	result := models.Db.Table("videos").Select("title", "description", "published_time", "thumbnails").Where("MATCH (title) AGAINST (? IN NATURAL LANGUAGE MODE)", term).Find(&videos)

@@ -27,13 +27,19 @@ func main() {
 		}
 		fmt.Println("Successfully loaded .env file")
 	}
+	fmt.Println("Sleeping for 20 seconds to wait for starting mysql")
+	time.Sleep(20 * time.Second)
+	fmt.Println("Sleep done")
+	// initialize mysql and redis
 	models.Init()
-	cronService := cron.New()
-	// run cron every 5 mins
+	// Running to scrape videos at the start of the service
 	controller.ScrapeVideos()
+	cronService := cron.New()
+	// run cron every 15 mins
 	cronService.AddFunc("*/15 * * * *", controller.ScrapeVideos)
 	cronService.Start()
 	e := echo.New()
+	// Initialising all the middlewares
 	e.Use(middleware.BodyLimit("2M"))
 	e.Use(middleware.Logger())
 	e.GET("/health-check", func(context echo.Context) error {
@@ -46,7 +52,7 @@ func main() {
 			e.Logger.Fatal("shutting down the server", err)
 		}
 	}()
-
+	// having a graceful shutdown
 	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
 	// Use a buffered channel to avoid missing signals as recommended for signal.Notify
 	quit := make(chan os.Signal, 1)

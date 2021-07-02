@@ -1,0 +1,46 @@
+version: "3.9"
+services:   
+  redis:
+    image: redis
+    ports: 
+      - "6379:6379"
+    networks:
+      - app-network  
+  mysql:
+    image: mysql:latest
+    ports: 
+      - "3306:3306"
+    environment: 
+      MYSQL_ROOT_PASSWORD: password123
+    command: --init-file /data/application/init.sql
+    volumes: 
+      - ./scripts/init.sql:/data/application/init.sql
+      - /Users/lokeshwaran/Documents/shinchan-coding/youtube-search/mysql-data:/var/lib/mysql
+    networks:
+      - app-network  
+  web:
+    build: .
+    ports:
+      - "9000:5000"
+    depends_on: 
+      - redis
+      - mysql
+    environment: 
+      mysql_username: root
+      mysql_password: password123
+      mysql_host: mysql
+      mysql_port: 3306
+      mysql_db_name: collection
+      youtube_access_tokens: ""
+      searchTerm: cricket
+      redis_host: redis
+      redis_port: 6379
+    networks:
+      - app-network
+  
+volumes: 
+  data-volume:
+    driver: local
+networks:
+  app-network:
+    driver: bridge

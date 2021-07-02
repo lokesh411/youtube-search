@@ -6,7 +6,7 @@ import (
 	datatypes "gorm.io/datatypes"
 	"gorm.io/gorm"
 )
-
+// init structs
 type Thumbnail struct {
 	Url    string `json:"url"`
 	Width  uint64 `json:"width"`
@@ -24,4 +24,9 @@ type VideoPayload struct {
 type Video struct {
 	gorm.Model
 	VideoPayload
+}
+
+func Init() {
+	MysqlInit()
+	RedisInit()
 }

@@ -1,15 +1,18 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 	"youtube-search/models"
 
+	"github.com/go-redis/redis/v8"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -38,9 +41,56 @@ type Response struct {
 	Items []Items `json:"items"`
 }
 
+var ctx = context.Background()
+var redisPrefix = "consumedUnits_"
+
+func getKey(maxUnits uint64) (string, bool, error) {
+	// split all the strings and check the units consumed
+	accessTokens := strings.Split(os.Getenv("youtube_access_tokens"), ",")
+	for _, token := range accessTokens {
+		val, err := models.Rdb.Get(ctx, redisPrefix+token).Uint64()
+		if err != nil {
+			if err == redis.Nil {
+				return token, true, nil
+			}
+			return "", false, err
+		}
+		if val < maxUnits {
+			return token, false, nil
+		}
+	}
+	return "", false, errors.New("all the tokens have consumed max amount of units")
+}
+
+func incrementUsage(token string, units int64, new bool) error {
+	if new {
+		loc, e := time.LoadLocation("America/Los_Angeles")
+		if e != nil {
+			return e
+		}
+		timeInPST := time.Now().In(loc).UTC()
+		year, month, day := time.Now().In(loc).AddDate(0, 0, 1).Date()
+		expiryTime := time.Date(year, month, day, 0, 0, 0, 0, loc).UTC().Unix() - timeInPST.Unix()
+		fmt.Println("expiry time :: ", expiryTime)
+		err := models.Rdb.SetEX(ctx, redisPrefix+token, units, time.Duration(expiryTime*int64(time.Second))).Err()
+		if err != nil {
+			return e
+		}
+	} else {
+		err := models.Rdb.IncrBy(ctx, redisPrefix+token, units).Err()
+		return err
+	}
+	return nil
+}
+
 func scrapeVideosHelper(publishedDate string) error {
 	fmt.Println("Search term :: ", os.Getenv("searchTerm"))
-	url := fmt.Sprintf("https://www.googleapis.com/youtube/v3/search?type=video&order=date&publishedAfter=%s&key=%s&q=%s&part=snippet&maxResults=25", publishedDate, os.Getenv("youtube_access_token"), os.Getenv("searchTerm"))
+	accessToken, isNewToken, err := getKey(10000)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf("https://www.googleapis.com/youtube/v3/search?type=video&order=date&publishedAfter=%s&key=%s&q=%s&part=snippet&maxResults=25", publishedDate, accessToken, os.Getenv("searchTerm"))
 	response, err := http.Get(url)
 	if err != nil {
 		return err
@@ -53,6 +103,10 @@ func scrapeVideosHelper(publishedDate string) error {
 	error := json.Unmarshal(responseData, &parsedResponse)
 	if error != nil {
 		return error
+	}
+	err = incrementUsage(accessToken, 100, isNewToken)
+	if err != nil {
+		return err
 	}
 	var videoList []models.Video
 	for _, videoData := range parsedResponse.Items {
