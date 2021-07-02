@@ -25,7 +25,7 @@ func Init() {
 		},
 	)
 	Db, err = gorm.Open(mysql.New(mysql.Config{
-		DSN: fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True",
+		DSN: fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True",
 			os.Getenv("db_username"),
 			os.Getenv("db_password"),
 			os.Getenv("db_host"),

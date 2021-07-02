@@ -10,18 +10,18 @@ import (
 
 var LIMIT = 10
 
-func FetchVideos(publishedDate string) (*[]models.Video, error) {
-	var videos []models.Video
+func FetchVideos(publishedDate string) (*[]models.VideoPayload, error) {
+	var videos []models.VideoPayload
 	var result *gorm.DB
 	if publishedDate == "" {
-		result = models.Db.Find(&videos).Limit(LIMIT).Order("published_time desc")
+		result = models.Db.Limit(LIMIT).Order("published_time desc").Table("videos").Find(&videos)
 	} else {
 		parsedTime, err := time.Parse(time.RFC3339, publishedDate)
 		fmt.Println("Parsed time :: ", parsedTime)
 		if err != nil {
 			return nil, result.Error
 		}
-		result = models.Db.Where("published_time < ?", parsedTime).Find(&videos).Limit(LIMIT).Order("published_time desc")
+		result = models.Db.Table("videos").Select("title", "description", "published_time", "thumbnails").Where("published_time < ?", parsedTime).Limit(LIMIT).Order("published_time desc").Find(&videos)
 	}
 	if result.Error != nil {
 		return nil, result.Error
@@ -29,9 +29,9 @@ func FetchVideos(publishedDate string) (*[]models.Video, error) {
 	return &videos, nil
 }
 
-func SearchVideos(term string) (*[]models.Video, error) {
-	var videos []models.Video
-	result := models.Db.Where("MATCH (title) AGAINST (?) IN NATURAL LANGUAGE MODE").Find(&videos)
+func SearchVideos(term string) (*[]models.VideoPayload, error) {
+	var videos []models.VideoPayload
+	result := models.Db.Table("videos").Select("title", "description", "published_time", "thumbnails").Where("MATCH (title) AGAINST (? IN NATURAL LANGUAGE MODE)", term).Find(&videos)
 	if result.Error != nil {
 		return nil, result.Error
 	}

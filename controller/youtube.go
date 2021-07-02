@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,9 +11,8 @@ import (
 	"youtube-search/models"
 
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
-
-var searchTerm = os.Getenv("searchTerm")
 
 type IDResponse struct {
 	Kind    string `json:"kind"`
@@ -39,7 +39,8 @@ type Response struct {
 }
 
 func scrapeVideosHelper(publishedDate string) error {
-	url := fmt.Sprintf("https://www.googleapis.com/youtube/v3/search?type=video&order=date&publishedAfter=%s&key=%s&q=%s&part=snippet", publishedDate, os.Getenv("youtube_access_token"), searchTerm)
+	fmt.Println("Search term :: ", os.Getenv("searchTerm"))
+	url := fmt.Sprintf("https://www.googleapis.com/youtube/v3/search?type=video&order=date&publishedAfter=%s&key=%s&q=%s&part=snippet&maxResults=25", publishedDate, os.Getenv("youtube_access_token"), os.Getenv("searchTerm"))
 	response, err := http.Get(url)
 	if err != nil {
 		return err
@@ -56,7 +57,15 @@ func scrapeVideosHelper(publishedDate string) error {
 	var videoList []models.Video
 	for _, videoData := range parsedResponse.Items {
 		parsedTime, _ := time.Parse(time.RFC3339, videoData.Snippet.PublishedAt)
-		item := models.Video{Title: videoData.Snippet.Title, Description: videoData.Snippet.Description, PublishedTime: parsedTime, Thumbnails: videoData.Snippet.Thumbnails}
+		item := models.Video{
+			VideoPayload: models.VideoPayload{
+				Title:         videoData.Snippet.Title,
+				Description:   videoData.Snippet.Description,
+				PublishedTime: parsedTime,
+				Thumbnails:    videoData.Snippet.Thumbnails,
+				ChannelId:     videoData.Snippet.ChannelId,
+			},
+		}
 		videoList = append(videoList, item)
 	}
 	result := models.Db.Create(&videoList)
@@ -67,8 +76,23 @@ func scrapeVideosHelper(publishedDate string) error {
 }
 
 func ScrapeVideos() {
-	error := scrapeVideosHelper("2021-06-01T20:50:01.170Z")
+	var fromPublishedDate string
+	result := &models.Video{}
+	response := models.Db.Order("published_time desc").Find(result)
+	if response.Error != nil {
+		if errors.Is(response.Error, gorm.ErrRecordNotFound) {
+			fromPublishedDate = time.Now().AddDate(0, -1, 0).Format("2021-06-01T20:50:01.170Z")
+		} else {
+			fmt.Println("Error in fetching the published record :: ", response)
+			return
+		}
+	} else {
+		fromPublishedDate = result.PublishedTime.AddDate(0, 0, 1).Format(time.RFC3339)
+	}
+	error := scrapeVideosHelper(fromPublishedDate)
 	if error != nil {
 		fmt.Println("Error in scrapping videos :: ", error)
+	} else {
+		fmt.Println("Scrapped the videos")
 	}
 }

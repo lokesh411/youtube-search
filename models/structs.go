@@ -13,10 +13,15 @@ type Thumbnail struct {
 	Height uint64 `json:"height"`
 }
 
+type VideoPayload struct {
+	Title         string         `gorm:"index:,class:FULLTEXT" json:"title"`
+	Description   string         `json:"description"`
+	ChannelId     string         `json:"channelId"`
+	PublishedTime time.Time      `gorm:"index" json:"publishedTime"`
+	Thumbnails    datatypes.JSON `json:"thumbnails"`
+}
+
 type Video struct {
 	gorm.Model
-	Title         string `gorm:"index:,class:FULLTEXT"`
-	Description   string
-	PublishedTime time.Time      `gorm:"index"`
-	Thumbnails    datatypes.JSON
+	VideoPayload
 }

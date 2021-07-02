@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 	"youtube-search/controller"
+	"youtube-search/handlers"
 	"youtube-search/models"
 
 	"github.com/joho/godotenv"
@@ -30,7 +31,7 @@ func main() {
 	cronService := cron.New()
 	// run cron every 5 mins
 	controller.ScrapeVideos()
-	cronService.AddFunc("*/1 * * * *", controller.ScrapeVideos)
+	cronService.AddFunc("*/15 * * * *", controller.ScrapeVideos)
 	cronService.Start()
 	e := echo.New()
 	e.Use(middleware.BodyLimit("2M"))
@@ -38,9 +39,11 @@ func main() {
 	e.GET("/health-check", func(context echo.Context) error {
 		return context.String(http.StatusOK, "Hello, the server is running")
 	})
+	e.GET("/videos", handlers.GetVideos)
+	e.GET("/videos/search", handlers.SearchVideos)
 	go func() {
 		if err := e.Start(":5000"); err != nil && err != http.ErrServerClosed {
-			e.Logger.Fatal("shutting down the server")
+			e.Logger.Fatal("shutting down the server", err)
 		}
 	}()
 
