@@ -20,7 +20,6 @@
   curl --location --request GET 'localhost:5000/videos?publishedDate=2021-07-02T14:36:14Z' // Fetches all the videos in the decending order of published date lesser than the given one, If publishedDate is not present, It fetches the first 10 items with decending order of publishedDate
 ```
 ## Uninstallation
-Run
 ```bash
   docker-compose down
 ```
